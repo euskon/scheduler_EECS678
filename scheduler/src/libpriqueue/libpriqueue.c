@@ -19,7 +19,8 @@
  */
 void priqueue_init(priqueue_t *q, int(*comparer)(const void *, const void *))
 {
-
+  q->first = NULL;
+  q->comp = comparer;
 }
 
 
