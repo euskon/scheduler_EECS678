@@ -10,13 +10,12 @@
 typedef struct _Node
 {
   struct Node* next; //This is the next node in the linked list.
-  struct job_t* job_at_node; //This is the job that the node is pointing at. See libscheduler.c for more...
+  void* ptr; //This is the job that the node is pointing at. See libscheduler.c for more...
 } Node;
 
 typedef struct _priqueue_t
 {
   struct Node* first;
-  int size;
   int(*comp)(const void *, const void *);
 } priqueue_t;
 

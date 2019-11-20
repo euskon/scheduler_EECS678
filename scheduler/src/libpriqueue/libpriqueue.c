@@ -33,7 +33,34 @@ void priqueue_init(priqueue_t *q, int(*comparer)(const void *, const void *))
  */
 int priqueue_offer(priqueue_t *q, void *ptr)
 {
-	return -1;
+  Node* to_insert;
+  to_insert->next = NULL;
+  to_insert->ptr = ptr;
+
+	int current_index = 0;
+  Node* previous_node;
+  Node* current_node = q->first;
+
+  while (1)
+  {
+    if (current_node == NULL)
+    {
+      if (current_index == 0)
+      {
+        q->first = to_insert;
+      }
+      else
+      {
+        previous_node->next = to_insert;
+      }
+      break;
+    }
+    previous_node = current_node;
+    current_node = current_node->next;
+    current_index++;
+  }
+  
+  return current_index;
 }
 
 
