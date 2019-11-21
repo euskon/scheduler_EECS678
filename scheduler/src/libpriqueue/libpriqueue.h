@@ -7,7 +7,7 @@
 /**
   Priqueue Data Structure
 */
-typedef struct _Node
+typedef struct Node
 {
   struct Node* next; //This is the next node in the linked list.
   void* ptr; //This is the job that the node is pointing at. See libscheduler.c for more...

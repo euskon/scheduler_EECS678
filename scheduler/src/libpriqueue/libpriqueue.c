@@ -33,7 +33,7 @@ void priqueue_init(priqueue_t *q, int(*comparer)(const void *, const void *))
  */
 int priqueue_offer(priqueue_t *q, void *ptr)
 {
-  Node* to_insert;
+  Node* to_insert = (Node*)malloc(sizeof(Node));
   to_insert->next = NULL;
   to_insert->ptr = ptr;
 
@@ -74,7 +74,7 @@ int priqueue_offer(priqueue_t *q, void *ptr)
  */
 void *priqueue_peek(priqueue_t *q)
 {
-	return NULL;
+	return q->first;
 }
 
 
@@ -88,7 +88,15 @@ void *priqueue_peek(priqueue_t *q)
  */
 void *priqueue_poll(priqueue_t *q)
 {
-	return NULL;
+	if (q->first == NULL)
+  {
+    return NULL;
+  }
+  else
+  {
+    q->first = q->first->next;
+    return q-> first;
+  }
 }
 
 
