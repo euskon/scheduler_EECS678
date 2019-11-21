@@ -83,9 +83,9 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
   new_job -> priority = priority;
   //TODO: Fix this so that it goes into the proper core, and that pre-emption is applied as neccesary.
   int core = 0;
-  bool pre_emption = FALSE;
+  bool pre_emption = false;
 
-  arr_Cores[core]->offer()
+  priqueue_offer(arr_Cores[core], new_job);
 
   if (pre_emption)
   {
