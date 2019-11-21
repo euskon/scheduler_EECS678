@@ -140,7 +140,40 @@ void *priqueue_at(priqueue_t *q, int index)
  */
 int priqueue_remove(priqueue_t *q, void *ptr)
 {
-	return 0;
+  
+	int removed_elements = 0;
+  Node* current_node = q->first;
+  Node* previous_node = NULL;
+
+  while (1)
+  {
+    if (current_node == NULL)
+    {
+      return removed_elements;
+    }
+    if (*(current_node->ptr) == *ptr)
+    {
+      if (previous_node == NULL)
+      {
+        q->first = q->first->next;
+        current_node = q->first;
+        previous_node = NULL;
+      }
+      else
+      {
+        previous_node->next = current_node->next;
+        current_node = current_node;
+        previous_node = previous_node;
+      }
+      removed_elements++;
+    }
+    else
+    {
+      previous_node = current_node;
+      current_node = current_node->next;
+    }
+    
+  }
 }
 
 
