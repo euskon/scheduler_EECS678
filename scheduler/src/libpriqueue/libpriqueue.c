@@ -223,7 +223,18 @@ void *priqueue_remove_at(priqueue_t *q, int index)
  */
 int priqueue_size(priqueue_t *q)
 {
-	return 0;
+  int number_of_elements = 0;
+	Node* current_node = q->first;
+
+  while (1)
+  {
+    if (current_node == NULL)
+    {
+      return number_of_elements;
+    }
+    number_of_elements++;
+    current_node = current_node->next;
+  }
 }
 
 
