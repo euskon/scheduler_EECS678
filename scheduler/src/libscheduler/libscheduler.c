@@ -7,11 +7,15 @@
 
 #include "libscheduler.h"
 #include "../libpriqueue/libpriqueue.h"
+/*  ZACH DEFINED GLOBALS: */
 
+//GLOBAL QUEUE FOR USE IN SCHEDULING
+priqueue_t** arr_Cores;
+int num_Cores;
+scheme_t schem_Curr;
 
 /**
   Stores information making up a job to be scheduled including any statistics.
-
   You may need to define some global variables or a struct to store your job queue elements. 
 */
 typedef struct _job_t
@@ -37,7 +41,12 @@ typedef struct _job_t
 */
 void scheduler_start_up(int cores, scheme_t scheme)
 {
-
+  num_Cores = cores;
+  schem_Curr = scheme;
+  arr_Cores = malloc(num_Cores * sizeof(priqueue_t*));
+  for(int i = 0; i < num_Cores; i++){
+    arr_Cores[i] = malloc(sizeof(priqueue_t));
+  }
 }
 
 
