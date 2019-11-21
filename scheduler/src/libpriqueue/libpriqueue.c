@@ -111,7 +111,21 @@ void *priqueue_poll(priqueue_t *q)
  */
 void *priqueue_at(priqueue_t *q, int index)
 {
-	return NULL;
+  int current_index = 0;
+  Node* current_node = q->first;
+
+  while (1)
+  {
+    if (current_node == NULL)
+    {
+      return NULL;
+    }
+    if (index == current_index)
+    {
+      return current_node->ptr;
+    }
+    current_node = current_node->next;
+  }
 }
 
 
