@@ -7,6 +7,8 @@
 
 #include "libscheduler.h"
 #include "../libpriqueue/libpriqueue.h"
+#include <stdbool.h> 
+
 /*  ZACH DEFINED GLOBALS: */
 
 //GLOBAL QUEUE FOR USE IN SCHEDULING
@@ -20,6 +22,7 @@ scheme_t schem_Curr;
 */
 typedef struct _job_t
 {
+  int jobNumber;
   int arrivalTime;
   int burstTime;
   int remainBurstTime;
@@ -72,7 +75,26 @@ void scheduler_start_up(int cores, scheme_t scheme)
  */
 int scheduler_new_job(int job_number, int time, int running_time, int priority)
 {
-	return -1;
+  job_t* new_job = malloc(sizeof(job_t));
+  new_job -> jobNumber = job_number;
+  new_job -> arrivalTime = time;
+  new_job -> burstTime = running_time;
+  new_job -> remainBurstTime = running_time;
+  new_job -> priority = priority;
+  //TODO: Fix this so that it goes into the proper core, and that pre-emption is applied as neccesary.
+  int core = 0;
+  bool pre_emption = FALSE;
+
+  arr_Cores[core]->offer()
+
+  if (pre_emption)
+  {
+    return core;
+  }
+  else
+  {
+    return -1;
+  }
 }
 
 
