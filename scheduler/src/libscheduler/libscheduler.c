@@ -10,7 +10,9 @@
 #include <stdbool.h> 
 
 /*  ZACH DEFINED GLOBALS: */
-
+int currTime;
+int totalWait;
+int totalJobs;
 //GLOBAL QUEUE FOR USE IN SCHEDULING
 priqueue_t** arr_Cores;
 int num_Cores;
@@ -28,7 +30,55 @@ typedef struct _job_t
   int remainBurstTime;
   int priority;
 } job_t;
-
+/**
+  @return: return 0 if newJob is higher priority based on earlier arrivalTime
+  0 if newJob->arrivalTime < jobInQ->arrivalTime
+  1 if newJob->arrivalTime >= jobInQ->arrivalTime
+  this will allow for comparison in while loop based on return from this function 
+  while its necessary to continue traversing further into the PQ past the higher priority
+  jobs. For this specific scheme this could be done by just putting the new job at the end.
+*/
+int fcfs(void* newJob, void* jobInQ){
+  if((job_t*)newJob->arrivalTime < (job_t*)jobInQ->arrivalTime){
+    return 0;
+  }
+  else{
+    return 1;
+  }
+}
+/**
+  @return: return 0 if newJob is higher priority based on shorter burstTime
+  0 if newJob->burstTime < jobInQ->burstTime 
+  1 if newJob->burstTime >= jobInQ->burstTime 
+  this will allow for comparison in while loop based on return from this function 
+  while its necessary to continue traversing further into the PQ past the higher priority
+  jobs. 
+*/
+int sjf(void* newJob, void* jobInQ){
+  if((job_t*)newJob->burstTime < (job_t*)jobInQ->burstTime){
+    return 0;
+  }
+  else{
+    return 1;
+  }
+}
+/**
+  @return: return 0 if newJob is higher priority based on shorter remainBurstTime
+  0 if newJob->remainBurstTime < jobInQ->remainBurstTime 
+  1 if newJob->remainBurstTime >= jobInQ->remainBurstTime 
+  this will allow for comparison in while loop based on return from this function 
+  while its necessary to continue traversing further into the PQ past the higher priority
+  jobs. This can use remainBurstTime for both the job that is already in the Queue and 
+  the newJob because newJob->burstTime === newJob->remainBurstTime
+*/
+int psjf(void* newJob, void* jobInQ){
+  if((job_t*)newJob->remainBurstTime < (job_t*)jobInQ->remainBurstTime){
+    return 0;
+  }
+  else{
+    return 1;
+  }
+}
 
 /**
   Initalizes the scheduler.
@@ -49,6 +99,23 @@ void scheduler_start_up(int cores, scheme_t scheme)
   arr_Cores = malloc(num_Cores * sizeof(priqueue_t*));
   for(int i = 0; i < num_Cores; i++){
     arr_Cores[i] = malloc(sizeof(priqueue_t));
+  }
+  switch(scheme){
+    case:FCFS
+          for(int i = 0; i < cores; i+++){
+            priqueue_init(arr_Cores[i], &fcfs);
+          }
+          break;
+    case:SJF
+          break;
+    case:PSJF
+          break;
+    case:PRI
+          break;
+    case:PPRI
+          break;
+    case:RR
+          break;
   }
 }
 
@@ -114,6 +181,7 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
   {
     return -1;
   }
+  totalJobs++;
 }
 
 
@@ -133,6 +201,7 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
  */
 int scheduler_job_finished(int core_id, int job_number, int time)
 {
+  totalWait += (priqueue_at())
 	return -1;
 }
 
