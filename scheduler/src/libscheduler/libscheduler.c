@@ -218,6 +218,28 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
   new_job -> priority = priority;
   new_job -> virgin = 1;
   //TODO: Fix this so that it goes into the proper core, and that pre-emption is applied as neccesary.
+  // int core = -1;
+  // int lowest = 99999;
+  // for (int i = 0; i < num_Cores; i++)
+  // {
+  //   if (priqueue_peek(arr_Cores[i]) == NULL)
+  //   {
+  //     core = i;
+  //     break;
+  //   }
+  //   if (priqueue_size(arr_Cores[i]) < lowest)
+  //   {
+  //     core = i;
+  //     lowest = priqueue_size(arr_Cores[i]);
+  //   }
+  // }
+  // if (core == -1)
+  // {
+  //   core == 0;
+  // }
+
+  // //TODO: Others?
+  // bool pre_emption = false;
   int core = -1;
   int lowest = 99999;
   for (int i = 0; i < num_Cores; i++)
