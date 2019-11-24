@@ -38,21 +38,73 @@ int priqueue_offer(priqueue_t *q, void *ptr)
   to_insert->ptr = ptr;
 
 	int current_index = 0;
-  Node* previous_node;
+  Node* previous_node = NULL;
   Node* current_node = q->first;
+  int comp_value = 0;
 
   while (1)
   {
-    if (current_node == NULL || q->comp(current_node, ptr))
+    if (current_node!=NULL)
     {
-      if (current_index == 0)
+      comp_value = q->comp(ptr,current_node->ptr);
+    }
+
+    if (current_node == NULL || comp_value < 0)
+    {
+      Node* next_node; //The node that comes after to_insert
+      Node* connecting_node; //What node comes before the node we are inserting?
+      if (current_node != NULL && current_index != 0) //If it isn't at either end.
+      {
+        if (current_node->next != NULL)
+        {
+          connecting_node = current_node;
+          next_node = current_node->next;
+        }
+        else
+        {
+          connecting_node = previous_node;
+          next_node = current_node;
+        }
+      }
+      else if (current_index == 0) //If it is at the start.
+      {
+        connecting_node = NULL;
+        next_node = current_node;
+      }
+      else //If it is at the end.
+      {
+        connecting_node = previous_node;
+        next_node = NULL;
+      }
+
+      //Place the new node.
+      if (connecting_node == NULL)
       {
         q->first = to_insert;
       }
       else
       {
-        previous_node->next = to_insert;
+        connecting_node->next = to_insert;
       }
+
+      //Place the next node
+      to_insert->next = next_node;
+
+      // printf("PLACING A NODE: ");
+      // printf("[index = %d]", current_index);
+      // printf("[connecting = %p] ", connecting_node);
+      // printf("[insert = %p] ", to_insert);
+      // printf("[next = %p] ", next_node);
+      // if (current_node == NULL)
+      // {
+      //   printf("[END] ");
+      // }
+      // else
+      // {
+      //   printf("[comp = %d] ", comp_value);
+      // }
+      // printf("\n");
+
       break;
     }
     previous_node = current_node;
@@ -117,7 +169,7 @@ void *priqueue_at(priqueue_t *q, int index)
 
   while (1)
   {
-    printf("HEY\n");
+    //printf("HEY\n");
     if (current_node == NULL)
     {
       return NULL;
@@ -127,6 +179,7 @@ void *priqueue_at(priqueue_t *q, int index)
       return current_node->ptr;
     }
     current_node = current_node->next;
+    current_index++;
   }
 }
 

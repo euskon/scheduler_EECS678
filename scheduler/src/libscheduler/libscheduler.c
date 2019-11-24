@@ -38,7 +38,6 @@
 //   int virign;
 // } job_t;
 
-
 /**
   @return: return 1 if newJob is higher priority based on earlier arrivalTime
   -1 if newJob->arrivalTime < jobInQ->arrivalTime
