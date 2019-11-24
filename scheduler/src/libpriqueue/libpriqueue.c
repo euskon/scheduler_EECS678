@@ -43,7 +43,7 @@ int priqueue_offer(priqueue_t *q, void *ptr)
 
   while (1)
   {
-    if (current_node == NULL)
+    if (current_node == NULL || q->comp(current_node, ptr))
     {
       if (current_index == 0)
       {
