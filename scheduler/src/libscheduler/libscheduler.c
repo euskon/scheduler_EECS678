@@ -9,75 +9,136 @@
 #include "../libpriqueue/libpriqueue.h"
 #include <stdbool.h> 
 
-/*  ZACH DEFINED GLOBALS: */
-int currTime;
-int totalWait;
-int totalJobs;
-//GLOBAL QUEUE FOR USE IN SCHEDULING
-priqueue_t** arr_Cores;
-int num_Cores;
-scheme_t schem_Curr;
+/** @GLOBALS: 
+  int currTime = 0;
+  int totalTurnaround = 0;
+  int totalWait = 0;
+  int totalResponse = 0;
+  int totalJobs = 0;
+  //GLOBAL QUEUE FOR USE IN SCHEDULING
+  priqueue_t* readyQueue;
+  //Array of CPU cores to run current job;
+  job_t** arr_Cores;
+  int num_Cores;
+  scheme_t schem_Curr;
+*/
 
 /**
   Stores information making up a job to be scheduled including any statistics.
   You may need to define some global variables or a struct to store your job queue elements. 
 */
-typedef struct _job_t
-{
-  int jobNumber;
-  int arrivalTime;
-  int burstTime;
-  int remainBurstTime;
-  int priority;
-} job_t;
+// typedef struct _job_t
+// {
+//   int jobNumber;
+//   int arrivalTime;
+//   int startTime;
+//   int burstTime;
+//   int remainBurstTime;
+//   int priority;
+//   int virign;
+// } job_t;
+
+
 /**
-  @return: return 0 if newJob is higher priority based on earlier arrivalTime
-  0 if newJob->arrivalTime < jobInQ->arrivalTime
-  1 if newJob->arrivalTime >= jobInQ->arrivalTime
+  @return: return 1 if newJob is higher priority based on earlier arrivalTime
+  -1 if newJob->arrivalTime < jobInQ->arrivalTime
+   0 if newJob->arrivalTime == jobInQ->arrivalTime
+   1 if newJob->arrivalTime > jobInQ->arrivalTime
   this will allow for comparison in while loop based on return from this function 
   while its necessary to continue traversing further into the PQ past the higher priority
   jobs. For this specific scheme this could be done by just putting the new job at the end.
 */
 int fcfs(void* newJob, void* jobInQ){
-  if((job_t*)newJob->arrivalTime < (job_t*)jobInQ->arrivalTime){
-    return 0;
+  if(((job_t*)newJob)->arrivalTime < ((job_t*)jobInQ)->arrivalTime){
+    return -1;
+  }
+  else if(((job_t*)newJob)->arrivalTime > ((job_t*)jobInQ)->arrivalTime){
+    return 1;
   }
   else{
-    return 1;
+    return 0;
   }
 }
 /**
-  @return: return 0 if newJob is higher priority based on shorter burstTime
-  0 if newJob->burstTime < jobInQ->burstTime 
-  1 if newJob->burstTime >= jobInQ->burstTime 
+  @return: return 1 if newJob is higher priority based on shorter burstTime
+  -1 newJob->burstTime < jobInQ->burstTime
+   0 if newJob->burstTime == jobInQ->burstTime 
+   1 if newJob->burstTime > jobInQ->burstTime 
   this will allow for comparison in while loop based on return from this function 
   while its necessary to continue traversing further into the PQ past the higher priority
   jobs. 
 */
 int sjf(void* newJob, void* jobInQ){
-  if((job_t*)newJob->burstTime < (job_t*)jobInQ->burstTime){
-    return 0;
+  if(((job_t*)newJob)->burstTime < ((job_t*)jobInQ)->burstTime){
+    return -1;
+  }
+  else if(((job_t*)newJob)->burstTime > ((job_t*)jobInQ)->burstTime){
+    return 1;
   }
   else{
-    return 1;
+    return 0;
   }
 }
 /**
-  @return: return 0 if newJob is higher priority based on shorter remainBurstTime
-  0 if newJob->remainBurstTime < jobInQ->remainBurstTime 
-  1 if newJob->remainBurstTime >= jobInQ->remainBurstTime 
+  @return: return 1 if newJob is higher priority based on shorter remainBurstTime
+  -1 newJob->remainBurstTime < jobInQ->remainBurstTime
+   0 if newJob->remainBurstTime == jobInQ->remainBurstTime 
+   1 if newJob->remainBurstTime > jobInQ->remainBurstTime 
   this will allow for comparison in while loop based on return from this function 
   while its necessary to continue traversing further into the PQ past the higher priority
   jobs. This can use remainBurstTime for both the job that is already in the Queue and 
   the newJob because newJob->burstTime === newJob->remainBurstTime
 */
 int psjf(void* newJob, void* jobInQ){
-  if((job_t*)newJob->remainBurstTime < (job_t*)jobInQ->remainBurstTime){
-    return 0;
+  if(((job_t*)newJob)->remainBurstTime < ((job_t*)jobInQ)->remainBurstTime){
+    return -1;
   }
-  else{
+  else if(((job_t*)newJob)->remainBurstTime > ((job_t*)jobInQ)->remainBurstTime){
     return 1;
   }
+  else{
+    return 0;
+  }
+}
+/**
+  @return: return 1 if newJob is higher priority based on SMALLEST priority
+  -1 newJob->priority > jobInQ->priority
+   0 if newJob->priority == jobInQ->priority 
+   1 if newJob->priority < jobInQ->priority 
+*/
+int pri(void* newJob, void* jobInQ){
+  if(((job_t*)newJob)->priority > ((job_t*)jobInQ)->priority){
+    return -1;
+  }
+  else if(((job_t*)newJob)->priority < ((job_t*)jobInQ)->priority){
+    return 1;
+  }
+  else{
+    return 0;
+  }
+}
+/**
+  @return: return 1 if newJob is higher priority based on SMALLEST priority value
+   0 if newJob->priority >= jobInQ->priority //imposes fcfs
+   1 if newJob->priority < jobInQ->priority 
+*/
+int ppri(void* newJob, void* jobInQ){
+  if(((job_t*)newJob)->priority < ((job_t*)jobInQ)->priority){
+    return -1;
+  }
+  else if(((job_t*)newJob)->priority > ((job_t*)jobInQ)->priority){
+    return 1;
+  }
+  else{
+    return 0;
+  }
+}
+//update remaining time of each active job within all cores
+void timeSync(int newTime){
+  for(int i = 0; i < num_Cores; i++){
+    arr_Cores[i]->remainBurstTime -= (newTime - currTime);
+  }
+  currTime = newTime;
 }
 
 /**
@@ -96,25 +157,31 @@ void scheduler_start_up(int cores, scheme_t scheme)
 {
   num_Cores = cores;
   schem_Curr = scheme;
-  arr_Cores = malloc(num_Cores * sizeof(priqueue_t*));
+  arr_Cores = malloc(num_Cores * sizeof(job_t*));
   for(int i = 0; i < num_Cores; i++){
-    arr_Cores[i] = malloc(sizeof(priqueue_t));
+    arr_Cores[i] = NULL;
   }
-  switch(scheme){
-    case:FCFS
-          for(int i = 0; i < cores; i+++){
-            priqueue_init(arr_Cores[i], &fcfs);
-          }
+  readyQueue = malloc(sizeof(priqueue_t));
+
+  switch(schem_Curr){
+    case FCFS:
+          priqueue_init(readyQueue, &fcfs);
           break;
-    case:SJF
+    case SJF:
+          priqueue_init(readyQueue, &sjf);
           break;
-    case:PSJF
+    case PSJF:
+          priqueue_init(readyQueue, &psjf);
           break;
-    case:PRI
+    case PRI:
+          priqueue_init(readyQueue, &pri);
           break;
-    case:PPRI
+    case PPRI:
+          priqueue_init(readyQueue, &ppri);
           break;
-    case:RR
+    case RR:
+          //purposely used fcfs
+          priqueue_init(readyQueue, &fcfs);
           break;
   }
 }
@@ -145,23 +212,25 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
   job_t* new_job = malloc(sizeof(job_t));
   new_job -> jobNumber = job_number;
   new_job -> arrivalTime = time;
+  new_job -> startTime = -1;
   new_job -> burstTime = running_time;
   new_job -> remainBurstTime = running_time;
   new_job -> priority = priority;
+  new_job -> virgin = 1;
   //TODO: Fix this so that it goes into the proper core, and that pre-emption is applied as neccesary.
   int core = -1;
   int lowest = 99999;
   for (int i = 0; i < num_Cores; i++)
   {
-    if (priqueue_peek(arr_Cores[i]) == NULL)
+    if (priqueue_peek(readyQueue) == NULL)
     {
       core = i;
       break;
     }
-    if (priqueue_size(arr_Cores[i]) < lowest)
+    if (priqueue_size(readyQueue) < lowest)
     {
       core = i;
-      lowest = priqueue_size(arr_Cores[i]);
+      lowest = priqueue_size(readyQueue);
     }
   }
   if (core == -1)
@@ -170,9 +239,9 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
   }
 
   //TODO: Others?
-  bool pre_emption = (scheme == SJF);
+  bool pre_emption = (schem_Curr == SJF);
   
-  priqueue_offer(arr_Cores[core], new_job);
+  priqueue_offer(readyQueue, new_job);
   if (pre_emption)
   {
     return core;
@@ -201,7 +270,14 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
  */
 int scheduler_job_finished(int core_id, int job_number, int time)
 {
-  totalWait += (priqueue_at())
+  totalWait += (time - arr_Cores[core_id]->burstTime - arr_Cores[core_id]->arrivalTime);
+  
+  job_t* front = (job_t*)priqueue_poll(readyQueue);
+  job_t* terminated = arr_Cores[core_id];
+  free 
+  if(front != NULL){
+    arr_Cores[core_id] = 
+  }
 	return -1;
 }
 
