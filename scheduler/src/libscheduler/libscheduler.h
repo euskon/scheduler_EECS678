@@ -3,7 +3,29 @@
 
 #ifndef LIBSCHEDULER_H_
 #define LIBSCHEDULER_H_
+/*  ZACH DEFINED GLOBALS: */
+int currTime = 0;
+int totalTurnaround = 0;
+int totalWait = 0;
+int totalResponse = 0;
+int totalJobs = 0;
+//GLOBAL QUEUE FOR USE IN SCHEDULING
+priqueue_t* readyQueue;
+//Array of CPU cores to run current job;
+job_t** arr_Cores;
+int num_Cores;
+scheme_t schem_Curr;
 
+typedef struct _job_t
+{
+  int jobNumber;
+  int arrivalTime;
+  int startTime;
+  int burstTime;
+  int remainBurstTime;
+  int priority;
+  int virgin;
+} job_t;
 /**
   Constants which represent the different scheduling algorithms
 */
