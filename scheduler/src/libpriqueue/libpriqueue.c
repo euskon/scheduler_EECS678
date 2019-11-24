@@ -94,8 +94,9 @@ void *priqueue_poll(priqueue_t *q)
   }
   else
   {
+    Node* to_return = q->first;
     q->first = q->first->next;
-    return q-> first;
+    return to_return->ptr;
   }
 }
 
@@ -116,6 +117,7 @@ void *priqueue_at(priqueue_t *q, int index)
 
   while (1)
   {
+    printf("HEY\n");
     if (current_node == NULL)
     {
       return NULL;
