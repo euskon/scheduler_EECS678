@@ -136,6 +136,22 @@ int ppri(const void* newJob, const void* jobInQ){
     return 0;
   }
 }
+/**
+  @return: return 1 if newJob is higher priority based on reenterTime value
+   0 if newJob->reenterTime >= jobInQ->reenterTime //imposes fcfs
+   1 if newJob->reenterTime < jobInQ->reenterTime 
+*/
+int rr(const void* newJob, const void* jobInQ){
+  if(((job_t*)newJob)->reenterTime < ((job_t*)jobInQ)->reenterTime){
+    return -1;
+  }
+  else if(((job_t*)newJob)->reenterTime > ((job_t*)jobInQ)->reenterTime){
+    return 1;
+  }
+  else{
+    return 0;
+  }
+}
 //update remaining time of each active job within all cores
 void timeSync(int newTime){
   for(int i = 0; i < num_Cores; i++){
@@ -186,7 +202,7 @@ void scheduler_start_up(int cores, scheme_t scheme)
           break;
     case RR:
           //purposely used fcfs
-          priqueue_init(readyQueue, &fcfs);
+          priqueue_init(readyQueue, &rr);
           break;
   }
 }
@@ -231,6 +247,7 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
   new_job -> remainBurstTime = running_time;
   new_job -> priority = priority;
   new_job -> virgin = 1;
+  new_job -> reenterTime = time;
 
   totalJobs++;
   if (isPreemptive())
@@ -245,6 +262,17 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
     else if(schem_Curr == PPRI){
       v = getCoreToPreemptPPRI(new_job);
       x = putJobInCore(getCoreToPreemptPPRI(new_job), new_job);
+    }
+    else if(schem_Curr == RR){
+      int core = findEmptyCore();
+      if(core != -1){
+        new_job->startTime = time;
+        new_job->virgin = 0;
+        arr_Cores[core] = new_job;
+        return core;
+      }
+      priqueue_offer(readyQueue, new_job);
+      return -1;
     }
     printf("Inside sched_new_job: return of getCoreToPreempt = %d\n", v);
     printf("Inside sched_new_job: return of putJobInCore = %d\n", x);
@@ -283,7 +311,7 @@ int findEmptyCore(){
 */
 bool isPreemptive()
 {
-  if (schem_Curr == PSJF || schem_Curr == PPRI)
+  if (schem_Curr == PSJF || schem_Curr == PPRI || schem_Curr == RR)
   {
     return true;
   }
@@ -425,6 +453,16 @@ int scheduler_job_finished(int core_id, int job_number, int time)
  */
 int scheduler_quantum_expired(int core_id, int time)
 {
+  //timeSync(time);
+  job_t* expiredJob = arr_Cores[core_id];
+  expiredJob->reenterTime = time;
+  priqueue_offer(readyQueue, expiredJob);
+  job_t* frontJob = (job_t*)priqueue_poll(readyQueue);
+  
+  if(frontJob != NULL){
+    arr_Cores[core_id] = frontJob;
+    return frontJob->jobNumber;
+  }
 	return -1;
 }
 

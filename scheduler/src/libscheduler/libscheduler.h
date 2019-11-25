@@ -22,6 +22,7 @@ typedef struct _job_t
   int remainBurstTime;
   int priority;
   int virgin;
+  int reenterTime;
 } job_t;
 
 job_t** arr_Cores;
