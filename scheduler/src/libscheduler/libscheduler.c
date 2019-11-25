@@ -213,12 +213,14 @@ void scheduler_start_up(int cores, scheme_t scheme)
  
  */
 bool isPreemptive();
-int getCoreToPreempt();
+int getCoreToPreemptPSJF();
+int getCoreToPreemptPPRI();
 int findEmptyCore();
 int putJobInCore(int core_id, job_t* new_job);
 
 int scheduler_new_job(int job_number, int time, int running_time, int priority)
 {
+  timeSync(time);
   job_t* new_job = malloc(sizeof(job_t));
   new_job -> jobNumber = job_number;
   new_job -> arrivalTime = time;
@@ -233,8 +235,20 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
   totalJobs++;
   if (isPreemptive())
   {
+    int v;
+    int x;
     new_job->startTime = time;
-    return putJobInCore(getCoreToPreempt(new_job), new_job);
+    if(schem_Curr == PSJF){
+      v = getCoreToPreemptPSJF(new_job);
+      x = putJobInCore(getCoreToPreemptPSJF(new_job), new_job);
+    }
+    else if(schem_Curr == PPRI){
+      v = getCoreToPreemptPPRI(new_job);
+      x = putJobInCore(getCoreToPreemptPPRI(new_job), new_job);
+    }
+    printf("Inside sched_new_job: return of getCoreToPreempt = %d\n", v);
+    printf("Inside sched_new_job: return of putJobInCore = %d\n", x);
+    return x;
   }
   else
   { 
@@ -242,7 +256,9 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
     if(core != -1)
     {
       new_job->startTime = time;
-      putJobInCore(core, new_job);
+      new_job->virgin = 0;
+      arr_Cores[core] = new_job;
+      // putJobInCore(core, new_job);
       return core;
     }
     priqueue_offer(readyQueue, new_job);
@@ -267,7 +283,7 @@ int findEmptyCore(){
 */
 bool isPreemptive()
 {
-  if (schem_Curr == PSJF)
+  if (schem_Curr == PSJF || schem_Curr == PPRI)
   {
     return true;
   }
@@ -277,25 +293,60 @@ bool isPreemptive()
 /*
   Return the core id of the core with the highest remaining burst time.
 */
-int getCoreToPreempt(job_t* new_job)
+int getCoreToPreemptPSJF(job_t* new_job)
 {
   int greatest_burst = 0;
   int greatest_id = -1;
   for (int i = 0; i < num_Cores; i++)
   {
-    if (arr_Cores[i] != NULL && (greatest_burst < arr_Cores[i]->burstTime))
+    if (arr_Cores[i] != NULL && (greatest_burst < arr_Cores[i]->remainBurstTime))
     {
       greatest_id = i;
-      greatest_burst = arr_Cores[i]->burstTime;
+      greatest_burst = arr_Cores[i]->remainBurstTime;
+    }
+    else if(arr_Cores[i] == NULL){
+      return i;
     }
   }
-  if (new_job->burstTime < greatest_burst)
+  if (new_job->remainBurstTime < greatest_burst)
   {
     return greatest_id;
   }
   else
   {
-    return -1;
+    return findEmptyCore();
+  }
+}
+
+/*
+  Return the core id of the core with the highest remaining burst time.
+*/
+int getCoreToPreemptPPRI(job_t* new_job)
+{
+  int lowest_pri = -1;
+  int lowest_id = -1;
+  for (int i = 0; i < num_Cores; i++)
+  {
+    if(arr_Cores[i] != NULL && lowest_pri == -1){//init highest_pri with first non-null arr entry
+      lowest_id = i;
+      lowest_pri = arr_Cores[i]->priority;
+    }
+    if (arr_Cores[i] != NULL && (lowest_pri < arr_Cores[i]->priority))
+    {
+      lowest_id = i;
+      lowest_pri = arr_Cores[i]->priority;
+    }
+    else if(arr_Cores[i] == NULL){
+      return i;
+    }
+  }
+  if (new_job->priority < lowest_pri)
+  {
+    return lowest_id;
+  }
+  else
+  {
+    return findEmptyCore();
   }
 }
 
@@ -306,11 +357,13 @@ If the core number is -1, the job will be offered to the ready queue.
 */
 int putJobInCore(int core_id, job_t* new_job)
 {
+  //no empty cores case
   if (core_id == -1)
   {
     priqueue_offer(readyQueue, new_job);
     return -1;
   }
+  //preempt core 
   if (arr_Cores[core_id] != NULL)
   {
     priqueue_offer(readyQueue, arr_Cores[core_id]);
