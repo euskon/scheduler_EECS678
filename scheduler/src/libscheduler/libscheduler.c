@@ -7,7 +7,7 @@
 
 #include "libscheduler.h"
 #include "../libpriqueue/libpriqueue.h"
-#include <stdbool.h> 
+#include <stdbool.h>
 
 /** @GLOBALS: 
   int currTime = 0;
@@ -22,7 +22,11 @@
   int num_Cores;
   scheme_t schem_Curr;
 */
-
+int currTime = 0;
+int totalTurnaround = 0;
+int totalWait = 0;
+int totalResponse = 0;
+int totalJobs = 0;
 /**
   Stores information making up a job to be scheduled including any statistics.
   You may need to define some global variables or a struct to store your job queue elements. 
@@ -35,7 +39,7 @@
 //   int burstTime;
 //   int remainBurstTime;
 //   int priority;
-//   int virign;
+//   int virgin;
 // } job_t;
 
 /**
@@ -47,7 +51,7 @@
   while its necessary to continue traversing further into the PQ past the higher priority
   jobs. For this specific scheme this could be done by just putting the new job at the end.
 */
-int fcfs(void* newJob, void* jobInQ){
+int fcfs(const void* newJob, const void* jobInQ){
   if(((job_t*)newJob)->arrivalTime < ((job_t*)jobInQ)->arrivalTime){
     return -1;
   }
@@ -67,7 +71,7 @@ int fcfs(void* newJob, void* jobInQ){
   while its necessary to continue traversing further into the PQ past the higher priority
   jobs. 
 */
-int sjf(void* newJob, void* jobInQ){
+int sjf(const void* newJob, const void* jobInQ){
   if(((job_t*)newJob)->burstTime < ((job_t*)jobInQ)->burstTime){
     return -1;
   }
@@ -88,7 +92,7 @@ int sjf(void* newJob, void* jobInQ){
   jobs. This can use remainBurstTime for both the job that is already in the Queue and 
   the newJob because newJob->burstTime === newJob->remainBurstTime
 */
-int psjf(void* newJob, void* jobInQ){
+int psjf(const void* newJob, const void* jobInQ){
   if(((job_t*)newJob)->remainBurstTime < ((job_t*)jobInQ)->remainBurstTime){
     return -1;
   }
@@ -105,7 +109,7 @@ int psjf(void* newJob, void* jobInQ){
    0 if newJob->priority == jobInQ->priority 
    1 if newJob->priority < jobInQ->priority 
 */
-int pri(void* newJob, void* jobInQ){
+int pri(const void* newJob, const void* jobInQ){
   if(((job_t*)newJob)->priority > ((job_t*)jobInQ)->priority){
     return -1;
   }
@@ -121,11 +125,11 @@ int pri(void* newJob, void* jobInQ){
    0 if newJob->priority >= jobInQ->priority //imposes fcfs
    1 if newJob->priority < jobInQ->priority 
 */
-int ppri(void* newJob, void* jobInQ){
-  if(((job_t*)newJob)->priority < ((job_t*)jobInQ)->priority){
+int ppri(const void* newJob, const void* jobInQ){
+  if(((job_t*)newJob)->priority > ((job_t*)jobInQ)->priority){
     return -1;
   }
-  else if(((job_t*)newJob)->priority > ((job_t*)jobInQ)->priority){
+  else if(((job_t*)newJob)->priority < ((job_t*)jobInQ)->priority){
     return 1;
   }
   else{
@@ -135,7 +139,9 @@ int ppri(void* newJob, void* jobInQ){
 //update remaining time of each active job within all cores
 void timeSync(int newTime){
   for(int i = 0; i < num_Cores; i++){
-    arr_Cores[i]->remainBurstTime -= (newTime - currTime);
+    if(arr_Cores[i] != NULL){
+      arr_Cores[i]->remainBurstTime -= (newTime - currTime);
+    }
   }
   currTime = newTime;
 }
@@ -206,75 +212,113 @@ void scheduler_start_up(int cores, scheme_t scheme)
   @return -1 if no scheduling changes should be made. 
  
  */
+bool isPreemptive();
+int getCoreToPreempt();
+int findEmptyCore();
+int putJobInCore(int core_id, job_t* new_job);
+
 int scheduler_new_job(int job_number, int time, int running_time, int priority)
 {
   job_t* new_job = malloc(sizeof(job_t));
   new_job -> jobNumber = job_number;
   new_job -> arrivalTime = time;
+  //must set this if the new job is going straight to a core to run 
+  //i.e. core was empty beforehand or preempting process already running
   new_job -> startTime = -1;
   new_job -> burstTime = running_time;
   new_job -> remainBurstTime = running_time;
   new_job -> priority = priority;
   new_job -> virgin = 1;
-  //TODO: Fix this so that it goes into the proper core, and that pre-emption is applied as neccesary.
-  // int core = -1;
-  // int lowest = 99999;
-  // for (int i = 0; i < num_Cores; i++)
-  // {
-  //   if (priqueue_peek(arr_Cores[i]) == NULL)
-  //   {
-  //     core = i;
-  //     break;
-  //   }
-  //   if (priqueue_size(arr_Cores[i]) < lowest)
-  //   {
-  //     core = i;
-  //     lowest = priqueue_size(arr_Cores[i]);
-  //   }
-  // }
-  // if (core == -1)
-  // {
-  //   core == 0;
-  // }
 
-  // //TODO: Others?
-  // bool pre_emption = false;
-  int core = -1;
-  int lowest = 99999;
+  totalJobs++;
+  if (isPreemptive())
+  {
+    new_job->startTime = time;
+    return putJobInCore(getCoreToPreempt(new_job), new_job);
+  }
+  else
+  { 
+    int core = findEmptyCore();
+    if(core != -1)
+    {
+      new_job->startTime = time;
+      putJobInCore(core, new_job);
+      return core;
+    }
+    priqueue_offer(readyQueue, new_job);
+    return -1;
+  }
+}
+
+/*
+Get the empty core with the lowest id. If no cores are empty, return -1.
+*/
+int findEmptyCore(){
+  for(int i = 0; i < num_Cores; i++){
+    if(arr_Cores[i]==NULL){
+      return i;
+    }
+  }
+  return -1;
+}
+
+/*
+  Simple utility function to get whether or not a certain algorithim may be preemptive.
+*/
+bool isPreemptive()
+{
+  if (schem_Curr == PSJF)
+  {
+    return true;
+  }
+  return false;
+}
+
+/*
+  Return the core id of the core with the highest remaining burst time.
+*/
+int getCoreToPreempt(job_t* new_job)
+{
+  int greatest_burst = 0;
+  int greatest_id = -1;
   for (int i = 0; i < num_Cores; i++)
   {
-    if (priqueue_peek(readyQueue) == NULL)
+    if (arr_Cores[i] != NULL && (greatest_burst < arr_Cores[i]->burstTime))
     {
-      core = i;
-      break;
-    }
-    if (priqueue_size(readyQueue) < lowest)
-    {
-      core = i;
-      lowest = priqueue_size(readyQueue);
+      greatest_id = i;
+      greatest_burst = arr_Cores[i]->burstTime;
     }
   }
-  if (core == -1)
+  if (new_job->burstTime < greatest_burst)
   {
-    core == 0;
-  }
-
-  //TODO: Others?
-  bool pre_emption = (schem_Curr == SJF);
-  
-  priqueue_offer(readyQueue, new_job);
-  if (pre_emption)
-  {
-    return core;
+    return greatest_id;
   }
   else
   {
     return -1;
   }
-  totalJobs++;
 }
 
-
+/*
+Puts a job in a core. 
+If the core is not empty, the job on the core will be offered to the ready queue.
+If the core number is -1, the job will be offered to the ready queue.
+*/
+int putJobInCore(int core_id, job_t* new_job)
+{
+  if (core_id == -1)
+  {
+    priqueue_offer(readyQueue, new_job);
+    return -1;
+  }
+  if (arr_Cores[core_id] != NULL)
+  {
+    priqueue_offer(readyQueue, arr_Cores[core_id]);
+  }
+  new_job->virgin = 0;
+  arr_Cores[core_id] = new_job;
+  return core_id;
+}
 /**
   Called when a job has completed execution.
  
@@ -292,14 +336,24 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
 int scheduler_job_finished(int core_id, int job_number, int time)
 {
   totalWait += (time - arr_Cores[core_id]->burstTime - arr_Cores[core_id]->arrivalTime);
-  
-  job_t* front = (job_t*)priqueue_poll(readyQueue);
-  job_t* terminated = arr_Cores[core_id];
-  free 
-  if(front != NULL){
-    arr_Cores[core_id] = 
+  totalTurnaround += (time - arr_Cores[core_id]->arrivalTime);
+  totalResponse += (arr_Cores[core_id]->startTime - arr_Cores[core_id]->arrivalTime);
+  job_t* frontJob = (job_t*)priqueue_poll(readyQueue);
+  job_t* terminatedJob = arr_Cores[core_id];
+  free(terminatedJob); 
+  if(frontJob != NULL){
+    //check if process that is going into core is virgin
+    if(frontJob->virgin){
+      frontJob->virgin = 0;//no longer virgin because it going to run now
+      frontJob->startTime = time;//set start time of job entering core to run
+    }
+    arr_Cores[core_id] = frontJob;
+    return frontJob->jobNumber;
   }
-	return -1;
+  else{
+    arr_Cores[core_id] = NULL;
+    return -1;
+  }
 }
 
 
@@ -331,7 +385,7 @@ int scheduler_quantum_expired(int core_id, int time)
  */
 float scheduler_average_waiting_time()
 {
-	return 0.0;
+	return (((float)totalWait) / ((float)totalJobs));
 }
 
 
@@ -344,7 +398,7 @@ float scheduler_average_waiting_time()
  */
 float scheduler_average_turnaround_time()
 {
-	return 0.0;
+	return (((float)totalTurnaround) / ((float)totalJobs));
 }
 
 
@@ -357,7 +411,7 @@ float scheduler_average_turnaround_time()
  */
 float scheduler_average_response_time()
 {
-	return 0.0;
+	return (((float)totalResponse) / ((float)totalJobs));
 }
 
 
@@ -369,7 +423,11 @@ float scheduler_average_response_time()
 */
 void scheduler_clean_up()
 {
-
+  for(int i = 0; i < num_Cores; i++){
+    arr_Cores[i] = NULL;
+  }
+  free(arr_Cores);
+  priqueue_destroy(readyQueue);
 }
 
 
@@ -386,5 +444,44 @@ void scheduler_clean_up()
  */
 void scheduler_show_queue()
 {
+  printf("CORES: \n");
+  for (int i = 0; i < num_Cores; i++)
+  {
+    if (arr_Cores[i] != NULL)
+    {
+      printf("  - %d: %d\n", i, arr_Cores[i]->jobNumber);
+    }
+    else
+    {
+      printf("  - %d: EMPTY\n", i);
+    }
+  }
+  printf("PRIORITY QUEUE: \n");
+  for (int i = 0; i < priqueue_size(readyQueue); i++)
+  {
+    job_t* display = priqueue_at(readyQueue, i);
+    printf("  - [%d] \n", display->jobNumber);
+  }
+}
 
+void scheduler_cores_and_queue()
+{
+  printf("CORES: \n");
+  for (int i = 0; i < num_Cores; i++)
+  {
+    if (arr_Cores[i] != NULL)
+    {
+      printf("  - %d: %d\n", i, arr_Cores[i]->jobNumber);
+    }
+    else
+    {
+      printf("  - %d: EMPTY\n", i);
+    }
+  }
+  printf("PRIORITY QUEUE: \n");
+  for (int i = 0; i < priqueue_size(readyQueue); i++)
+  {
+    job_t* display = priqueue_at(readyQueue, i);
+    printf("  - [%d] \n", display->jobNumber);
+  }
 }
